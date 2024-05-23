@@ -2,6 +2,12 @@
 
 This is a Spark project used to generate reports that deliver data about providers.
 
+## Completed Project Notes
+
+The project is completed and the code is available in the `src` folder. The code is written in Scala and uses Spark to process the data. The reports are saved in the `data` folder in JSON format in folders `output1` and `output2`.
+
+Note: There was not enough time to complete unit test specs. That is a remaining "TODO" in the project.
+
 ## Requirements
 * Language: Scala
 * Framework: Spark
