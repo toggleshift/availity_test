@@ -4,6 +4,7 @@ import org.apache.spark.sql.{DataFrame, DataFrameWriter, Row, SparkSession}
 import org.apache.spark.sql.functions.{col, concat, count, lit, month}
 
 object ProviderRoster  {
+  private[provider] val DataFolder = "data"
 
   /**
    * Read the provider dataset from the file system.
@@ -11,11 +12,11 @@ object ProviderRoster  {
    * @param spark SparkSession
    * @return DataFrame - provider dataset containing provider_id|provider_specialty|first_name|middle_name|last_name
    */
-  private def readProviders(spark: SparkSession): DataFrame = {
+  private[provider] def readProviders(spark: SparkSession): DataFrame = {
     val providersDf = spark.read.format("csv")
       .option("delimiter", "|")
       .option("header", "true")
-      .load(Paths.get("data", "providers.csv").toString)
+      .load(Paths.get(DataFolder, "providers.csv").toString)
 
     providersDf.show()
     providersDf
@@ -27,11 +28,11 @@ object ProviderRoster  {
    * @param spark SparkSession
    * @return DataFrame - visits dataset containing visit_id|provider_id|date
    */
-  private def readVisits(spark: SparkSession): DataFrame = {
+  private[provider] def readVisits(spark: SparkSession): DataFrame = {
     val visitsDf = spark.read
       .format("csv")
       .option("header", "false")
-      .load(Paths.get("data", "visits.csv").toString)
+      .load(Paths.get(DataFolder, "visits.csv").toString)
       .withColumnRenamed("_c0", "visit_id")
       .withColumnRenamed("_c1", "provider_id")
       .withColumnRenamed("_c2", "date")
@@ -49,7 +50,7 @@ object ProviderRoster  {
    * @param visitsDf DataFrame - visits dataset (see definition above)
    * @return DataFrame - containing provider_id|full_name|provider_specialty|num_visits
    */
-  private def totalVisitsPerProvider(providersDf: DataFrame, visitsDf: DataFrame): DataFrame = {
+  private[provider] def totalVisitsPerProvider(providersDf: DataFrame, visitsDf: DataFrame): DataFrame = {
     val totalVisitsDf = providersDf
       .withColumn("full_name", concat(col("first_name"), lit(" "), col("middle_name"), lit(" "), col("last_name")))
       .select("provider_id", "full_name", "provider_specialty")
@@ -67,7 +68,7 @@ object ProviderRoster  {
    * @param visitsDf DataFrame - visits dataset (see definition above)
    * @return DataFrame - containing provider_id|month|num_visits
    */
-  private def totalVisitsPerProviderPerMonth(visitsDf: DataFrame): DataFrame = {
+  private[provider] def totalVisitsPerProviderPerMonth(visitsDf: DataFrame): DataFrame = {
     val totalVisitsPerMonthDf = visitsDf
       .withColumn("month", month(col("date")))
       .groupBy("provider_id", "month")
@@ -84,8 +85,8 @@ object ProviderRoster  {
    * @param folder String - the folder to output the results to
    * @param partitionBy Option[String] - the optional column to partition the results by
    */
-  private def outputResults(df: DataFrame, folder: String, partitionBy: Option[String]): Unit = {
-    val path = Paths.get("data", folder).toString
+  private[provider] def outputResults(df: DataFrame, folder: String, partitionBy: Option[String]): Unit = {
+    val path = Paths.get(DataFolder, folder).toString
     val partitionedWriter: DataFrameWriter[Row] = partitionBy.foldLeft(df.write)((writer, p) => writer.partitionBy(p))
     partitionedWriter.json(path)
   }
@@ -100,9 +101,9 @@ object ProviderRoster  {
     val visitsDf = readVisits(spark)
 
     val totalVisitsDf = totalVisitsPerProvider(providersDf, visitsDf)
-    outputResults(totalVisitsDf, "output1b", Some("provider_specialty"))
+    outputResults(totalVisitsDf, "output1", Some("provider_specialty"))
 
     val totalVisitsPerMonthDf = totalVisitsPerProviderPerMonth(visitsDf)
-    outputResults(totalVisitsPerMonthDf, "output2b", None)
+    outputResults(totalVisitsPerMonthDf, "output2", None)
   }
 }
